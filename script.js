@@ -242,7 +242,7 @@ function renderServiceCards() {
         const fromPrice = getMinPrice(svc.id);
         const iconPath = SERVICE_ICONS[svc.icon] || SERVICE_ICONS.content;
         return `
-            <div class="service-card" id="service-${svc.id}">
+            <div class="service-card reveal" id="service-${svc.id}">
                 <div class="service-icon">
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${iconPath}</svg>
                 </div>
@@ -799,6 +799,86 @@ function initHeroCarousel() {
     startAutoplay();
 }
 
+// --- Scroll reveal animations ---
+let revealObserver = null;
+function initRevealObserver() {
+    if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
+        return;
+    }
+    if (!revealObserver) {
+        revealObserver = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    }
+    document.querySelectorAll('.reveal:not(.is-visible)').forEach((el, i) => {
+        el.style.transitionDelay = `${Math.min(i % 4, 3) * 0.08}s`;
+        revealObserver.observe(el);
+    });
+}
+
+// --- Scroll progress bar ---
+function initScrollProgress() {
+    const bar = document.getElementById('scroll-progress');
+    if (!bar) return;
+    const update = () => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        bar.style.width = `${pct}%`;
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+}
+
+// --- FAQ accordion ---
+function initFaq() {
+    const items = document.querySelectorAll('.faq-item');
+    items.forEach(item => {
+        const btn = item.querySelector('.faq-question');
+        const answer = item.querySelector('.faq-answer');
+        if (!btn || !answer) return;
+        btn.addEventListener('click', () => {
+            const isOpen = item.classList.contains('open');
+            items.forEach(other => {
+                other.classList.remove('open');
+                const a = other.querySelector('.faq-answer');
+                const b = other.querySelector('.faq-question');
+                if (a) a.style.maxHeight = null;
+                if (b) b.setAttribute('aria-expanded', 'false');
+            });
+            if (!isOpen) {
+                item.classList.add('open');
+                btn.setAttribute('aria-expanded', 'true');
+                answer.style.maxHeight = `${answer.scrollHeight}px`;
+            }
+        });
+    });
+}
+
+// --- Back to top ---
+function initBackToTop() {
+    const btn = document.getElementById('back-to-top');
+    if (!btn) return;
+    const toggle = () => btn.classList.toggle('visible', window.scrollY > 600);
+    window.addEventListener('scroll', toggle, { passive: true });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    toggle();
+}
+
+// --- Seamless marquee (duplicate track for infinite loop) ---
+function initMarquee() {
+    const track = document.getElementById('marquee-track');
+    if (!track || track.dataset.cloned === 'true') return;
+    track.innerHTML += track.innerHTML;
+    track.dataset.cloned = 'true';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     loadCart();
@@ -944,4 +1024,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initOrderForm();
     initContactForm();
     prefillContactSubject();
+
+    // Vivid UX enhancements
+    initMarquee();
+    initScrollProgress();
+    initFaq();
+    initBackToTop();
+    initRevealObserver();
 });
